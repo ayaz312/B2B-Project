@@ -7,7 +7,7 @@
 ?>
 
 <!DOCTYPE html>
-<html lang="en-GB">
+<html lang="en-IN">
 
 <head>
     <meta charset="utf-8">
