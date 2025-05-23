@@ -1,0 +1,681 @@
+<?php
+    include_once("../../admin/includes/config.php");
+    include_once("../../admin/includes/connection.php");
+    include_once("../../admin/classes/admin.cls.php");
+    $admin= new Admin();
+
+		// print_r($_FILES);	 print_r($_POST);exit;
+
+		extract($_POST);
+
+		if($customer_name == "")
+		{
+			$error_msg = "Please enter the name."."<br>";
+			echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+			exit;
+		}
+		// if($customer_email == "")
+		// {
+		// 	$error_msg = "Please enter the valid email address."."<br>";
+		// 	echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+		// 	exit;
+		// }
+
+		if($customer_email != "")
+		{
+			if (!filter_var($customer_email, FILTER_VALIDATE_EMAIL)) {
+				$error_msg .= "Invalid email format."."<br>";
+				echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+				exit;
+			  }
+
+		}
+		
+		if($customer_phone != "")
+		{
+			
+			
+			$char = substr($customer_phone, 0, 1);
+			if($char == 0)
+			{
+				$error_msg = "Phone number can not be start with zero."."<br>";
+				echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+				exit;
+			}
+
+			else if(!preg_match("^[1-9][0-9]*|0^", $customer_phone)) { 
+				$error_msg = "phone number is not valid"."<br>";
+				echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+				exit;
+			}
+			else if(strlen($customer_phone) < 10)
+			{
+				$error_msg = "Phone number must be 10 digit in length."."<br>";
+				echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+				exit;
+			}
+			else if(strlen($customer_phone) > 10)
+			{
+				$error_msg = "Phone number must be 10 digit in length."."<br>";
+				echo json_encode(array("status" => 0,"msg" => $error_msg ,  "response" => "fail" ));
+				exit;
+				
+			}
+
+		}
+
+		if(!$error)
+		{
+			// upload image if exist
+			$image="";
+			$date=date("Y-m-d H:i:s");
+			
+            $total_order = $admin->countAllData("tbl_b2b_order");
+			$i = $total_order+1;
+			$num = str_pad($i, 3, '0', STR_PAD_LEFT);
+			$orderid = 'HTL-'.$num;
+
+			// count total price 
+			$total_amount = b2b_count_total_amount();
+			$total_product = b2b_count_total_item();
+			$vat_percent = 20;
+            $vat_amount = ($total_amount*$vat_percent)/100;
+            $total = $total_amount+$vat_amount;
+			$carriage_amount = ($_SESSION['carriage_amount'] > 0) ? $_SESSION['carriage_amount'] : 0;
+            $final_amount = $total+$carriage_amount;
+			$data=array(
+				
+				"order_no"=>$orderid,
+				"total_price"=>$total_amount,
+				"total_product"=> $total_product,
+				"customer_name" =>$customer_name,
+				"customer_email" =>$customer_email,
+				"customer_phone" =>$customer_phone,
+				"customer_business_name" =>$customer_business_name,
+				"customer_address" =>$customer_address,
+				"order_status"=>"1",
+				"cancel_reason"=>"NA",
+                "vat_amount"=>number_format($vat_amount, 2),
+                "carriage_amount"=>number_format($carriage_amount, 2),
+                "final_amount"=>number_format($final_amount, 2),
+				"image" => '',
+               
+				// "create_date"=>date('Y-m-d')
+			 );
+            	// print_r($data);exit;
+				// $data = $this->security->xss_clean($data);
+				$order_id = $admin->addb2bData("tbl_b2b_order",$data);
+				if($order_id)
+				{
+					// $b2b_cart_data = $this->session->userdata('b2b_cart_data');
+                    $b2b_cart_data = $_SESSION['b2b_cart_data'];
+					if(isset($b2b_cart_data) and !empty($b2b_cart_data)) {
+                        
+						$cartarray = $b2b_cart_data;
+						foreach($cartarray as $product=>$val) {
+                            $p_slug = ($val['item_slug']) ? $val['item_slug'] : '';
+							$odata=array(
+								"orderno"=>$orderid,
+								"pid"=>$val['item_id'],
+								"p_name"=>$val['product_name'],
+								"pcode"=>$val['p_code'],
+								"final_price"=>number_format($val['item_price'], 2),
+								"p_slug"=>$p_slug,
+								"thumnbail"=>$val['thumbnail'],
+								"quantity"=>$val['item_qty'],
+								// "createon"=>date('Y-m-d')
+							 );
+							// $odata=$this->security->xss_clean($odata);
+							$order_detail=$admin->addb2bData("tbl_b2b_order_detail",$odata);
+						}
+					}
+							if($order_detail)
+							{
+
+								$baseurl = SITE_URL;
+								$htmlContent = "<html>
+								<head>
+								<meta charset='utf-8'>
+								<title>Order Confirmation</title>
+								</head>
+								<body style='margin: 0;'>
+								<table width='600' border='0' cellspacing='0' cellpadding='0' align='center'>
+								<tbody>
+								<tr>
+								<td valign='top'>
+								<table width='100%' border='0' cellspacing='0' cellpadding='0'>
+								<tbody>
+								<tr>
+								<td>
+								<table width='100%' border='0' cellspacing='0' cellpadding='0'>
+								<tbody>
+								<tr>
+								<td  align='center' style=' width: 100%;'>
+								<a href='".$baseurl."'><img src='".$baseurl."/b2b/img/htl_black_logo.png' style='display: block; border: 0; width:100px;'></a></td>
+								</tr>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' border='0' cellspacing='10' cellpadding='0' style='border-top: 2px solid;'>
+								<tbody>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>";
+								
+                                
+                                
+                                $customerhtml = "<tr>
+                                    <td>
+                    
+                                        <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                                        <tbody>
+                                        
+                                        <tr>
+                                        <td width='70%' align='left' style='  font-size:24px;font-family: arial;color: #000;line-height: 24px;'>
+                                        Dear ".ucfirst($customer_name)." , 
+                                        </td>
+                                        <td width='30%' align='right' style='  font-size: 14px;font-family: arial;color: #848484;line-height:24px;'>
+                                        ORDER #".$orderid."
+                                        </td>
+                                        </tr>
+                                        </tbody>
+                                        </table>
+                                    </td>
+								</tr>
+
+								<tr>
+                                    <td valign='top'>
+                                        <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                                        <tbody>
+                                        <tr>
+                                        <td width='70%'  style='font-size:24px; font-family: arial; color:#848484; line-height: 25px;'>Thank you for your Order
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td width='70%'  style='font-size:16px; font-family: arial; color:#848484; line-height:25px;'><b>If you have any query, please contact us at admin@harrowtrading.com</b>
+                                        </td>
+                                        </tr>
+                                        </tbody>
+                                        </table>
+                                    </td>
+								</tr>";
+
+
+
+                                $adminhtml = "<tr>
+                                <td>
+                
+                                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                                    <tbody>
+                                    
+                                    <tr>
+                                    <td width='70%' align='left' style='  font-size:24px;font-family: arial;color: #000;line-height: 24px;'>
+                                    Dear Admin , 
+                                    </td>
+                                    <td width='30%' align='right' style='  font-size: 14px;font-family: arial;color: #848484;line-height: 24px;'>
+                                    ORDER #".$orderid."
+                                    </td>
+                                    </tr>
+                                    </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td valign='top'>
+                                    <table width='100%' border='0' cellspacing='0' cellpadding='0'>
+                                    <tbody>
+                                    <tr>
+                                    <td width='70%'  style='font-size:24px; font-family: arial; color:#848484; line-height: 25px;'>New Order Received
+                                    </td>
+                                    </tr>
+                                    <tr>
+                                    <td>&nbsp;</td>
+                                    </tr>
+                                    <tr>
+                                    <td width='70%'  style='font-size: 14px; font-family: arial; color:#848484; line-height: 25px;'></td>
+                                    </tr>
+                                    </tbody>
+                                    </table>
+                                </td>
+                            </tr>";
+
+
+
+								$orderContent = "<tr>
+								<td>
+								<table width='100%' border='0' cellspacing='0' cellpadding='0'>
+								<tbody>
+								
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' border='0' cellspacing='10' cellpadding='0' style='border-top:1px solid #b1b1b1;'>
+								<tbody>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td>
+								<table width='100%' border='0' cellspacing='0' cellpadding='0'>
+								<tbody>
+								<tr>
+								<td style='font-size:17px;
+								font-family: arial;
+								color: #848484; white-space: nowrap;
+								'>Order summary</td>
+								</tr>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>";
+
+
+
+								//$b2b_cart_data = $this->session->userdata('b2b_cart_data');
+                                $b2b_cart_data = $_SESSION['b2b_cart_data'];
+								foreach($b2b_cart_data as $product=>$val)	{
+
+									$tot_amount = $val['item_qty']*$val['item_price'];
+									$tot_amount = number_format((float)$tot_amount, 2, '.', '');
+								$orderContent .= "<tr>
+								<td style='font-family: arial; width: 10%;'>
+								<img src='".$baseurl."/admin/uploads/".$val['thumbnail']."' align='left' width='100' height='100' style='margin-right:15px;border-radius:8px;border:1px solid #e5e5e5;'>
+								</td>
+								<td style='font-family: arial; width:100%;'>
+								<span style='font-size:13px;font-weight:600;line-height:1.4;color:#555'>".$val['p_code']." - ".$val['product_name']."</span> 
+								</td>
+								<td style='font-family: arial; width:100%;'>
+								<span style='font-size:13px;font-weight:600;line-height:1.4;color:#555'>".$val['item_qty']."</span> 
+								</td>
+								<td style='font-family: arial;white-space:nowrap;'>
+								<p style='color:#555;line-height:150%;font-size:13px;font-weight:600;margin:0 0 0 15px' align='right'>&#163; ".$tot_amount."</p>
+								</td>
+								</tr>
+				
+								<tr>
+								<td>&nbsp;</td>
+								</tr>";
+								}
+								// $image_path = $baseurl.'/b2b/uploads/'.$image;
+								$orderContent .= "
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' border='0' cellspacing='10' cellpadding='0' style='border-top:1px solid #b1b1b1;'>
+								<tbody>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								
+								<tr>
+								<td>&nbsp;</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'> Total Amount
+								</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'>&#163;".$total_amount."
+								</td>
+								</tr>
+
+                                <tr>
+								<td>&nbsp;</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'> Vat (20%)
+								</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'>&#163;".number_format($vat_amount, 2)."
+								</td>
+								</tr>
+
+                                <tr>
+								<td>&nbsp;</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'> Carriage
+								</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'>&#163;".number_format($carriage_amount, 2)."
+								</td>
+								</tr>
+
+                                <tr>
+								<td>&nbsp;</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'> Grand Total
+								</td>
+								<td width='33%' style='font-size: 14px;font-family: arial;color: #848484;line-height: 24px; text-align: right;'>&#163;".number_format($final_amount, 2)."
+								</td>
+								</tr>
+								
+								
+				
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' border='0' cellspacing='10' cellpadding='0' style='border-top:1px solid #b1b1b1;'>
+								<tbody>
+								<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td width='100%' style='  font-size:17px;font-family: arial;color: #000;line-height: 24px;'>
+								Customer information
+								</td>
+								<td>&nbsp;</td>
+								</tr>
+								<tr>
+								<td width='100%' style='  font-size:14px;font-family: arial;color:#848484;;line-height: 24px;'>
+								".ucfirst($customer_name)."<br>
+								".$customer_email."<br>";
+								if(!empty($customer_phone))	{
+									$orderContent .= "<div>".$customer_phone."</div>";
+								}
+								if(!empty($customer_business_name))	{
+									
+									$orderContent .= "<div>".$customer_business_name."</div>";
+								}
+								if(!empty($customer_address))	{
+									
+									$orderContent .= "<div>".$customer_address."</div>";
+								}
+								
+								// if($image !="")
+								// {
+								// 	$order_image_content .= '<img width="300" height="200" src="'.$image_path.'">';
+
+								// }
+								
+								$order_bottom_content .= "</td>
+								<td>&nbsp;</td>
+								</tr>
+								
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' align='center' border='0' cellspacing='0' cellpadding='0' style='border-top:1px solid #b1b1b1; padding-top: 15px;'>
+								<tbody>
+								<tr>
+								<td width='50%' align='center' style='font-family: arial; font-size: 16px; color:#848484;'>Follow us
+								</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								<tr>
+								<td valign='top'>
+								<table width='100%' align='center' border='0' cellspacing='10' cellpadding='0'>
+								<tbody>
+								<tr>
+								<td width='43%'>&nbsp;</td>
+								<td width='7%' align='right' style='background: #000;border-radius: 50px;'>
+								<a href='#'><img src='".$baseurl."/assets/images/emailer/facebook-icon.png' style='display: block; border: 0;padding: 10px;'></a>
+								</td>
+								<td width='7%' style='background: #000;border-radius: 50px;'>
+								<a href='#'><img src='".$baseurl."/assets/images/emailer/twitter.png' style='display: block; border: 0; padding: 10px;'></a>
+								</td>
+								<td width='43%'>&nbsp;</td>
+								</tr>
+								</tbody>
+								</table>
+								</td>
+								</tr>
+								</tbody>
+								</table>
+								</body>
+								</html>";
+								
+									// $config['mailtype'] = 'html';
+									// $config['protocol'] = 'sendmail';
+									// $config['mailpath'] = '/usr/sbin/sendmail';
+									// $config['charset'] = 'iso-8859-1';
+									// $config['wordwrap'] = TRUE;
+									// $this->email->initialize($config);
+									// //$this->email->to('farman@quinterocorp.com');
+									// $this->email->to($customer_email);
+									// // $this->email->cc('info@harrowdecor.co.uk');
+									// $this->email->from('info@harrowdecor.co.uk','HerrowDecore');
+									// $this->email->subject('B2B Order Confirmation | Harrow Decor');
+									// $this->email->message($htmlContent);
+									// //$this->email->attach($file);
+									//  $this->email->send();
+
+
+                                    $customer_html = $htmlContent .$customerhtml. $orderContent.$order_bottom_content;
+                                    $admin_html = $htmlContent .$adminhtml. $orderContent . $order_image_content.$order_bottom_content;
+
+                                    $to_user = $customer_email;
+                                    $to_admin = 'admin@harrowtrading.com';
+									
+
+                                     $from = "noreply@harrowtrading.com";
+                                     $fromName = 'Harrow Trading';
+                                     $sendernewdata = date("d-F-Y", strtotime($date));
+                                     //email subject
+                                     $subject = 'B2B Order Confirmation | Harrow Trading'; 
+                                     $headers = "From: $fromName"." <".$from.">";
+
+                                     $headers = "MIME-Version: 1.0" . "\r\n";
+                                     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                                     
+                                     // More headers
+                                     $headers .= 'From: Harrowtrading <noreply@harrowtrading.com>' . "\r\n";
+                                    // $headers .= 'Bcc: shoeb@abydostechnologies.com' . "\r\n";
+                                     
+                                    if($to_user != "")
+									{ 
+										mail($to_user,$subject,$customer_html,$headers);
+									}
+                                    // mail($to_admin,$subject,$admin_html,$headers);
+                                    
+                                     //mail("furrukh_atiq@yahoo.co.uk",$subject,$htmlnewContent,$headers);
+                                    // mail("admin@harrowtrading.com",$subject,$htmlnewContent,$headers);
+                                    // unset($_SESSION["shopping_cart"]);
+
+									
+								}
+								
+									// $this->session->unset_userdata("shopping_cart");
+
+									// manage 4th screen content
+
+									$image_path = $baseurl.'/b2b/uploads/'.$image;
+									$str = '';
+
+									$str .= ' <div class="col-sm-6 custo-detail">
+												<h2>Custome Details</h2>
+												<ul>
+													<li><span>Name:</span>'.ucfirst($customer_name).'</li>';
+													
+													if($customer_email != ""){
+														$str .= '<li><span>Email:</span> '.$customer_email.'</li>';
+													}
+
+													if($customer_phone != ""){
+														$str .= '<li><span>Contact No.:</span> +91-'.$customer_phone.'</li>';
+													}
+													
+													if($customer_business_name != ""){
+														$str .= '<li><span>Company:</span>'.$customer_business_name.'</li>';
+													}
+													
+													if($customer_address != ""){
+														$str .= '<li><span>Address:</span>'.$customer_address.'</li>';
+													}
+
+													
+													
+													$str .= '</ul></div>';
+
+											$str .= '<div class="col-sm-6 ord-detail">
+											<h2>Order Details</h2>
+											<table>';
+
+											$str .= '<tr class="inv-bg">
+													<th>#</th>
+													<th>Product Name</th>
+													<th>Qty</th>
+													<th>Amount(£)</th>';
+											$k=1;	
+											foreach($b2b_cart_data as $key=>$myval){
+												
+												$val = (object)$myval;
+												$tot_amount = $val->item_qty*$val->item_price;
+												$tot_amount = number_format((float)$tot_amount, 2, '.', '');
+												
+												$str .= '<tr>
+													<td>'.$k.'</th>
+													<td class="txt-al">'.$val->p_code.' - '.$val->product_name.'</td>
+													<td>'.$val->item_qty.'</td>
+													<td>'.$tot_amount.'</td>
+												</tr>';
+												$k++;
+
+											}
+												
+												$str .= '<tr>
+													<td colspan="2" rowspan="1" class="tottxt-al"><b>Amount</b></td>
+													<td colspan="2" class="totamt-al">£'.number_format((float)$total_amount, 2, '.', '').'</td>';
+													
+											//	$str .= '</tr></table></div>';
+
+                                                $str .= '<tr>
+													<td colspan="2" rowspan="1" class="tottxt-al"><b> Vat (20%)</b></td>
+													<td colspan="2" class="totamt-al">£'.number_format((float)$vat_amount, 2, '.', '').'</td>';
+													
+												//	$str .= '</tr></table></div>';
+
+                                                $str .= '<tr>
+                                                <td colspan="2" rowspan="1" class="tottxt-al"><b> Carriage</b></td>
+                                                <td colspan="2" class="totamt-al">£'.number_format((float)$carriage_amount, 2, '.', '').'</td>';
+                                                
+                                         		//   $str .= '</tr></table></div>';
+
+                                                $str .= '<tr>
+													<td colspan="2" rowspan="1" class="tottxt-al"><b>Grand Total</b></td>
+													<td colspan="2" class="totamt-al">£'.number_format((float)$final_amount, 2, '.', '').'</td>';
+													
+												$str .= '</tr></table></div>';
+
+												if($image != ""){
+													$str .= '<div class="col-sm-12" style="margin-top:25px;"><center><img width="300" height="200" src="'.$image_path.'"></center></div>';
+												}
+
+												// $this->session->unset_userdata('b2b_cart_data');
+                                                // $b2b_cart_data = $_SESSION['b2b_cart_data'];
+                                                unset($_SESSION['b2b_cart_data']);
+												unset($_SESSION['carriage_amount']);
+												echo json_encode(array("status" => 1,"msg" => $str ,  "response" => "success" , "order_id" => $orderid ));
+												exit;
+
+
+
+				}
+
+						
+			} else {
+
+						echo json_encode(array("status" => 0,"msg" => $error ,  "response" => "fail" ));
+						exit;
+
+                        
+			}
+
+
+            // by ayaz 14 dec 2023 ,  total price of items
+    function b2b_count_total_amount()
+    {
+        $total_amount = 0;
+        $b2b_cart_data = $_SESSION['b2b_cart_data'];
+        if(isset($b2b_cart_data) and !empty($b2b_cart_data))
+        {
+
+                $total_amount = 0;
+                // check if item allready exist in cart
+                foreach($b2b_cart_data as $mykey=>$myval)
+                {
+                    $val = (object) $myval;
+
+                    $price = $val->item_qty*$val->item_price;
+                    $total_amount = $total_amount + $price;
+                }
+                $total_amount = number_format((float)$total_amount, 2, '.', '');
+        }
+        
+        return $total_amount;
+    }
+
+
+    // by ayaz 14 dec 2023,  count total item in cart
+	function b2b_count_total_item()
+	{
+		$total_item = 0;
+		$b2b_cart_data = $_SESSION['b2b_cart_data'];
+		if(isset($b2b_cart_data) and !empty($b2b_cart_data))
+		{
+				$total_item = 0;
+				// check if item allready exist in cart
+				foreach($b2b_cart_data as $mykey=>$myval)
+				{
+					$total_item = $total_item+1;
+					
+				}
+				
+		}
+		
+		return $total_item;
+	}
+
+
+	

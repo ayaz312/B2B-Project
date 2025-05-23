@@ -1,0 +1,588 @@
+  
+
+
+<style>
+    .b2bfooter{
+        padding-top: 90px !important;
+        Padding-bottom: 25px !important;
+    }
+</style>
+
+
+		<!--====================  footer area ====================-->
+	
+    <!-- <div class="footer-area-wrapper">
+       
+       
+    </div>
+   -->
+
+<script>
+var rootApp = angular.module('rootapp', ['mynapp','searhmyapp','prdctmyapp']);
+ //var prdctmyapp = angular.module('prdctmyapp', []);
+ 
+ 
+ 
+ var application = angular.module('mynapp', []);
+application.controller("formncontroller", function($scope, $http){
+ 
+});
+
+
+    // update cart on inc or dec ,  bya ayaz   
+   function update_b2b_cart(pid , qty )
+   {
+
+    $.ajax({
+            url: '<?php echo base_url(); ?>B2bFront/updateb2bCart',
+            type: 'POST',
+            dataType: 'json',
+            data: {pid:pid,qty:qty},
+            success: function(data) {
+                
+                // alert(data);
+                if(data.status == 1)
+                {
+                    // $(".my_b2b_data").html(data.msg);
+                    $(".b2b_grand_total").html(data.b2b_total_amount);
+                    
+
+                } else if (data.status == 0) {
+
+                    $(".error_msg").html(data.msg);
+
+                }
+                
+            }
+        });
+
+   }   
+        
+       
+    $(document).on("click", '.b2binc', function(event) {  
+            
+            var pid = $(this).data("id");
+            var oldValue = $("#pquantity"+pid).val();
+            var oldValue = oldValue.replace(/[^0-9]/g, '');
+            var oldval = parseFloat(oldValue);
+
+            if(oldval >= 1)
+            {
+                
+                var newVal = parseFloat(oldValue) + 1;
+                // alert(pid);
+                $("#pquantity"+pid).val(newVal);
+
+                update_b2b_cart(pid , newVal);
+
+                var price =  $(this).closest('tr').find('.b2b_item_price').val();
+                var price = parseFloat(price).toFixed(2);
+                if(price == '')price = 0;
+                var newprice = price*newVal;
+                // alert(newprice);
+                var newprice = parseFloat(newprice).toFixed(2);
+                $(this).closest('tr').find('.b2b_total_price').html(newprice);
+
+                $("#pquantity"+pid).attr("data-qty",newVal);
+            }
+
+        });
+
+        $(document).on("click", '.b2bdec', function(event) {  
+            
+            var pid = $(this).data("id");
+            // alert(pid);
+            var oldValue = $("#pquantity"+pid).val();
+           
+            if (oldValue > 1) {
+                var newVal = parseFloat(oldValue) - 1;
+            } else {
+
+                $("#pquantity"+pid).val(1);
+                newVal = 1;
+            }
+            
+            $("#pquantity"+pid).val(newVal);
+            update_b2b_cart(pid , newVal);
+
+            var price =  $(this).closest('tr').find('.b2b_item_price').val();
+            var price = parseFloat(price).toFixed(2);
+            if(price == '')price = 0;
+            var newprice = price*newVal;
+            var newprice = parseFloat(newprice).toFixed(2);
+            $(this).closest('tr').find('.b2b_total_price').html(newprice);
+            $("#pquantity"+pid).attr("data-qty",newVal);
+        });
+    </script>
+
+<script>
+
+$(document).ready(function(){
+   
+    
+    // close modal on click outside at anywhere
+    $(document).on('click',function(e){
+        if(!(($(e.target).closest("#searhmyapp").length > 0 ) || ($(e.target).closest(".b2b_cross").length > 0))){
+        // $("#modalBox").hide();
+        $(".b2b_cross").trigger("click");
+       
+    }
+    });
+});
+
+</script> 
+
+<script>
+$(document).ready(function () {
+
+    $(document).on("keyup", '.b2b_qty', function(event) {
+
+        var val = $(this).val();
+        var obj = $(this);
+
+        if(val > 0)
+        {
+            var b2b_qty = parseInt(val);
+            var b2b_price = $(this).closest('tr').find('.b2b_item_price').val();
+            
+        
+            var total_price = b2b_price*b2b_qty;
+            var total_price = parseFloat(total_price).toFixed(2);
+
+            $(this).closest('tr').find('.b2b_total_price').html(total_price);
+            
+            var pid = $(this).closest('tr').find('.b2bdec').data("id");
+            
+        
+        
+
+            if(pid != "" && b2b_price != "")
+            {
+
+                // update session
+                $.ajax({
+                url: '<?php // echo base_url(); ?>B2bFront/updateb2bCart',
+                type: 'POST',
+                dataType: 'json',
+                data: {pid:pid , qty:b2b_qty},
+                success: function(data) {
+                    
+                        // alert(data);
+                        if(data.status == 1)
+                        {
+                            $(".b2b_grand_total").html(data.b2b_total_amount);
+                            obj.attr("data-qty",b2b_qty);
+
+                        } else if (data.status == 0) {
+
+                            // $(".my_b2b_data").html(data.msg);
+
+                        }
+                    
+                    }
+                });
+            }
+        }
+    });
+
+    $(document).on("change", '.b2b_qty', function(event) {
+
+        var val = $(this).val();
+        var obj = $(this);
+
+        if(val > 0)
+        {
+            var b2b_qty = parseInt(val);
+            var b2b_price = $(this).closest('tr').find('.b2b_item_price').val();
+            
+
+            var total_price = b2b_price*b2b_qty;
+            var total_price = parseFloat(total_price).toFixed(2);
+
+            $(this).closest('tr').find('.b2b_total_price').html(total_price);
+            
+            var pid = $(this).closest('tr').find('.b2bdec').data("id");
+            
+            // alert(sum);
+
+            if(pid != "" && b2b_price != "")
+            {
+
+                // update session
+                $.ajax({
+                url: '<?php // echo base_url(); ?>B2bFront/updateb2bCart',
+                type: 'POST',
+                dataType: 'json',
+                data: {pid:pid , qty:b2b_qty},
+                success: function(data) {
+                    
+                        // alert(data);
+                        if(data.status == 1)
+                        {
+                            $(".b2b_grand_total").html(data.b2b_total_amount);
+                            obj.attr("data-qty",b2b_qty);
+
+                        } else if (data.status == 0) {
+
+                            // $(".my_b2b_data").html(data.msg);
+
+                        }
+                    
+                    }
+                });
+            }
+
+
+        } else {
+
+            $(this).val($(this).data("qty"));
+            
+        }
+
+});
+    
+ $(document).on("keyup", '.b2b_item_price', function(event) {
+
+        var val = $(this).val();
+        var obj = $(this);
+       // alert(val);
+        if(val > 0)
+        {
+            var price = parseFloat(val).toFixed(2);
+            var b2b_qty = $(this).closest('tr').find('.b2b_qty').val();
+            var total_price = price*b2b_qty;
+            var total_price = parseFloat(total_price).toFixed(2);
+           
+            $(this).closest('tr').find('.b2b_total_price').html(total_price);
+            
+            var pid = $(this).closest('tr').find('.b2bdec').data("id");
+            
+            // alert(pid);
+
+
+            var sum = 0;
+            
+               $('.b2b_tr').each(function() {
+                var $this = $(this),
+                qty = parseInt($this.find( ".b2b_qty" ).val()),
+                price = parseFloat($this.find( ".b2b_item_price" ).val());
+                var total_price = 0;
+              
+               
+               
+                if(price > 0)
+                { 
+                    var total_price = price*qty;
+                    sum = sum+total_price;
+
+                  
+                }
+                
+               
+               
+                // alert(sum);
+                
+                 return sum;
+            });
+
+           
+           // alert(sum);
+
+            if(pid != "" && price != "")
+            {
+
+                // update session
+                $.ajax({
+                url: '<?php // echo base_url(); ?>B2bFront/update_b2bcart_price',
+                type: 'POST',
+                dataType: 'json',
+                data: {pid:pid , price:price},
+                success: function(data) {
+                    
+                        // alert(data);
+                        if(data.status == 1)
+                        {
+                           // alert();
+                            sum = parseFloat(sum).toFixed(2);
+                            $(".b2b_grand_total").html(sum);
+                            obj.attr("data-price",price);
+
+                        } else if (data.status == 0) {
+
+                        // $(".my_b2b_data").html(data.msg);
+
+                        }
+                    
+                    }
+                });
+            }
+
+        }
+
+ }); 
+ 
+ 
+ $(document).on("change", '.b2b_item_price', function(event) {
+
+        var val = $(this).val();
+        var obj = $(this);
+
+        if(val > 0)
+        {
+            var price = parseFloat(val).toFixed(2);
+            var b2b_qty = $(this).closest('tr').find('.b2b_qty').val();
+            var total_price = price*b2b_qty;
+            var total_price = parseFloat(total_price).toFixed(2);
+
+            $(this).closest('tr').find('.b2b_total_price').html(total_price);
+            
+            var pid = $(this).closest('tr').find('.b2bdec').data("id");
+            
+            
+
+            if(pid != "" && price != "")
+            {
+
+                // update session
+                $.ajax({
+                url: '<?php // echo base_url(); ?>B2bFront/update_b2bcart_price',
+                type: 'POST',
+                dataType: 'json',
+                data: {pid:pid , price:price},
+                success: function(data) {
+                    
+                        // alert(data);
+                        if(data.status == 1)
+                        {
+                            $(".b2b_grand_total").html(data.b2b_total_amount);
+                            obj.attr("data-price",price);
+
+                        } else if (data.status == 0) {
+
+                        // $(".my_b2b_data").html(data.msg);
+
+                        }
+                    
+                    }
+                });
+            }
+
+
+        } else {
+
+            $(this).val($(this).data('price'));
+
+        }
+
+});
+
+
+
+
+    $(document).on("click", '.my_add_btn', function(event) { 
+            
+        //  alert("new link clicked!");
+        var obj = $(this);
+        var pid = $(this).data("id");
+        // alert(pid);
+        // $.cookie('foo', 'Yes');
+        //  console.log($.cookie('foo'));
+
+
+        $.ajax({
+            url: '<?php // echo base_url(); ?>B2bFront/setb2bCookiesData',
+            type: 'POST',
+            dataType: 'json',
+            data: {pid:pid},
+            success: function(data) {
+                
+                // alert(data);
+                if(data.status == 1)
+                {
+                    
+                    $(".my_b2b_data").html(data.msg);
+                    obj.hide();
+                    obj.closest("li").find('.my_right_btn').show();
+                    $(".my_b2b_data").attr("data-count",data.total_b2b_count);
+
+                    if(data.total_b2b_count > 0)
+                    {
+                        $(".b2b_proceed").show();
+                    }
+
+                } else if (data.status == 0) {
+
+                    $(".error_msg1").html(data.msg);
+
+                }
+                
+            }
+        });
+});
+
+    $(document).on("click", '.remove_item', function(event) {
+       
+        var obj = $(this);
+        var mykey = $(this).data("key");
+       
+        if(mykey >= 0)
+        {
+            var conf = confirm("Are you sure?");
+            if(conf)
+            {
+               
+                $(".b2b_cross").trigger("click");
+               
+                $.ajax({
+                    url: '<?php echo base_url(); ?>B2bFront/removeb2bItem',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {mykey:mykey},
+                    success: function(data) {
+                        
+                        // alert(data);
+                        if(data.status == 1)
+                        {
+                            
+                            // $(".my_b2b_data").html(data.msg);
+                            $(".my_b2b_data").attr("data-count",data.b2b_item_count);
+                            $(".b2b_grand_total").html(data.b2b_total_amount);
+
+                            $(obj).closest('tr').remove();
+                            
+
+                            if(data.b2b_item_count == 0)
+                            {
+                                $(".b2b_proceed").hide();
+                                $(".b2b_total_amount_area").remove();
+                            }
+                        
+                        } else if (data.status == 0) {
+
+                            $(".error_msg").html(data.msg);
+
+                        }
+                    }
+
+                });
+            }} else {
+
+            alert("Item Id looks empty!");
+            return false;
+        }
+
+    });
+
+});
+
+
+function onlyNumberKey1(evt) 
+{
+        
+    // Only ASCII character in that range allowed
+    let ASCIICode = (evt.which) ? evt.which : evt.keyCode
+    
+    if(ASCIICode == 46)
+    {
+    return true;
+
+    } else {
+        if (ASCIICode > 31 && (ASCIICode < 48 || ASCIICode > 57))
+            return false;
+        return true;
+
+    }
+}
+function onlyNumberKey(evt) {
+    
+            // Only ASCII character in that range allowed
+            let ASCIICode = (evt.which) ? evt.which : evt.keyCode
+            if (ASCIICode > 31 && (ASCIICode < 48 || ASCIICode > 57))
+                return false;
+            return true;
+        }
+
+   
+
+        
+
+</script>
+
+
+ <script>
+         var fetch = angular.module('searhmyapp', []);
+
+        fetch.controller('fetchCtrl', ['$scope', '$http', function ($scope, $http) {
+
+            // Fetch data
+            $scope.fetchUsers = function(){
+                
+                var searchText_len = $scope.searchText.trim().length;
+
+                // Check search text length
+                if(searchText_len > 0){
+                    $http({
+                    method: 'post',
+                    url: '<?php // echo base_url(); ?>B2bFront/b2b_getdatasearch',
+                    data: {searchText:$scope.searchText}
+                    }).then(function successCallback(response) {
+                        
+                        if(response.data != "")
+                        {
+                            $scope.searchResult = response.data;
+                        }
+                        
+
+                    });
+                } else {
+                    $scope.searchResult = {};
+                }
+                
+            }
+
+            // Set value to search box
+            $scope.setValue = function(index,$event){
+				$scope.searchinsert = {};
+                $scope.searchText = $scope.searchResult[index].name;
+                // $scope.searchinsert.slug = $scope.searchResult[index].slug;
+                slug = $scope.searchResult[index].slug;
+						 $http({
+                            method:"POST",
+                            url:"<?php // echo base_url(); ?>B2bFront/b2bsearchinputdata",
+                            data:{slug:slug},
+                            }).success(function(data){
+                                $scope.searchText = "";
+                                $scope.searchinsert.slug = "";
+                            window.location.href = data;      
+                            });
+                $scope.searchResult = {};
+                $event.stopPropagation();
+            }
+
+            $scope.searchboxClicked = function($event){
+                $event.stopPropagation();
+            }
+
+            $scope.containerClicked = function(){
+                $scope.searchResult = {};
+            }
+            
+                $scope.searchData = function(){
+                $scope.searchinsert = {};
+                $scope.searchResult = {};
+                $scope.searchText = "";
+                // $http({
+                // method:"POST",
+                // url:"<?php echo base_url(); ?>Front/searchinputdata",
+                // data:{slug:$scope.searchinsert.slug},
+                // }).success(function(data){
+                    // $scope.searchText = "";
+                    // $scope.searchinsert.slug = "";
+                // window.location.href = data;      
+                // });
+  
+ }
+ 
+        }]);
+
+        </script>
